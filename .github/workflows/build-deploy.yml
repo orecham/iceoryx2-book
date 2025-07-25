@@ -119,11 +119,6 @@ jobs:
           name: book-${{ github.sha }}
           path: ./temp-docs
 
-      - name: Setup git config
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
       - name: Deploy to version directory
         run: |
           if [[ "${{ github.ref_type }}" == "branch" ]]; then
