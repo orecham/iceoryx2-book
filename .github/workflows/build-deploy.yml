@@ -1,0 +1,155 @@
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]  # Trigger on version tags like v0.1, v1.0, etc.
+    paths:
+      - 'source/**'
+      - 'poetry.lock'
+      - 'pyproject.toml'
+      - '.markdownlint.json'
+      - '.github/workflows/build-deploy.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'source/**'
+      - 'poetry.lock'
+      - 'pyproject.toml'
+      - '.markdownlint.json'
+      - '.github/workflows/build-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write  # Need write access to push to gh-pages branch
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: markdownlint-cli
+        uses: nosborn/github-action-markdown-cli@v3.5.0
+        with:
+          files: source
+          config: .markdownlint.json
+          dot: true
+
+  build:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.8.4
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install Python dependencies
+        run: poetry install --no-root --with dev
+
+      - name: Build book
+        run: poetry run make clean html
+          
+      - name: Upload book artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: book-${{ github.sha }}
+          path: build/html
+          retention-days: 30
+
+  deploy:
+    # Deploy on pushes to main branch or version tags
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+        continue-on-error: true
+
+      - name: Create gh-pages branch if it doesn't exist
+        if: failure()
+        run: |
+          git checkout --orphan gh-pages
+          git rm -rf .
+          echo "# iceoryx2-book" > README.md
+          git add README.md
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Initialize gh-pages branch"
+          git push origin gh-pages
+          
+      - name: Checkout gh-pages branch (retry)
+        if: failure()
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Download book artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: book-${{ github.sha }}
+          path: ./book
+
+      - name: Setup git config
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy to version directory
+        run: |
+          if [[ "${{ github.ref_type }}" == "branch" ]]; then
+            DEPLOY_DIR="${{ github.ref_name }}"
+            COMMIT_MSG="Deploy ${{ github.ref_name }} book - ${{ github.sha }}"
+          else
+            # For tags, remove 'v' prefix (v0.1 -> 0.1)
+            DEPLOY_DIR="${{ github.ref_name#v }}"
+            COMMIT_MSG="Deploy version $DEPLOY_DIR book - ${{ github.sha }}"
+          fi
+          
+          echo "Deploying to $DEPLOY_DIR/ directory"
+          
+          # Remove existing version directory
+          rm -rf "$DEPLOY_DIR/"
+          
+          # Create version directory and copy files
+          mkdir -p "$DEPLOY_DIR"
+          cp -r ./book/* "$DEPLOY_DIR/"
+          
+          # Clean up temp directory
+          rm -rf ./book
+          
+          # Commit and push changes
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "$COMMIT_MSG"
+            git push origin gh-pages
+          fi
