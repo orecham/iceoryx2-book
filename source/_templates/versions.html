@@ -1,0 +1,163 @@
+<!-- _templates/versions.html -->
+<div class="version-picker">
+  <div class="version-selector">
+    <button class="version-button" onclick="toggleVersions()">
+      <span id="current-version">Loading...</span>
+      <span class="dropdown-arrow">▼</span>
+    </button>
+    <div class="version-dropdown" id="version-dropdown">
+      <!-- Versions will be populated by JavaScript -->
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleVersions() {
+  const dropdown = document.getElementById('version-dropdown');
+  const arrow = document.querySelector('.dropdown-arrow');
+  
+  if (dropdown.style.display === 'block') {
+    dropdown.style.display = 'none';
+    arrow.style.transform = 'rotate(0deg)';
+  } else {
+    dropdown.style.display = 'block';
+    arrow.style.transform = 'rotate(180deg)';
+  }
+}
+
+// Get current version from URL path
+function getCurrentVersion() {
+  const path = window.location.pathname;
+  const pathParts = path.split('/').filter(part => part);
+  return pathParts[0] || 'main';
+}
+
+// Populate available versions
+async function loadVersions() {
+  try {
+    const response = await fetch('/versions.json');
+    const versions = await response.json();
+    const currentVersion = getCurrentVersion();
+    
+    // Update the button with current version
+    const currentVersionSpan = document.getElementById('current-version');
+    const currentVersionData = versions.find(v => v.name === currentVersion);
+    if (currentVersionData) {
+      currentVersionSpan.textContent = `${currentVersion}${currentVersionData.type ? ' ' + currentVersionData.type : ''}`;
+    } else {
+      currentVersionSpan.textContent = currentVersion;
+    }
+    
+    // Populate dropdown with all versions
+    const dropdown = document.getElementById('version-dropdown');
+    dropdown.innerHTML = ''; // Clear existing content
+    
+    versions.forEach(version => {
+      const link = document.createElement('a');
+      link.href = `/${version.name}/`;
+      link.className = 'version-link';
+      
+      if (version.name === currentVersion) {
+        link.className += ' current-version';
+        link.innerHTML = `${version.name}${version.type ? ' ' + version.type : ''} <span class="current-indicator">✓</span>`;
+      } else {
+        link.textContent = `${version.name}${version.type ? ' ' + version.type : ''}`;
+      }
+      
+      dropdown.appendChild(link);
+    });
+  } catch (error) {
+    console.log('Could not load versions');
+    document.getElementById('current-version').textContent = getCurrentVersion();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadVersions);
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+  const versionPicker = document.querySelector('.version-picker');
+  if (!versionPicker.contains(event.target)) {
+    const dropdown = document.getElementById('version-dropdown');
+    const arrow = document.querySelector('.dropdown-arrow');
+    dropdown.style.display = 'none';
+    arrow.style.transform = 'rotate(0deg)';
+  }
+});
+</script>
+
+<style>
+.version-picker {
+  margin: 1rem 0;
+  position: relative;
+}
+
+.version-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--color-sidebar-item-background--hover);
+  border: 1px solid var(--color-sidebar-item-background--current);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--color-sidebar-link);
+  transition: all 0.2s ease;
+}
+
+.version-button:hover {
+  background: var(--color-sidebar-item-background--current);
+}
+
+.version-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-sidebar-background);
+  border: 1px solid var(--color-sidebar-item-background--current);
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.version-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  text-decoration: none;
+  color: var(--color-sidebar-link);
+  border-bottom: 1px solid var(--color-sidebar-item-background--hover);
+  transition: background-color 0.2s ease;
+}
+
+.version-link:last-child {
+  border-bottom: none;
+}
+
+.version-link:hover {
+  background: var(--color-sidebar-item-background--hover);
+}
+
+.version-link.current-version {
+  background: var(--color-sidebar-item-background--current);
+  font-weight: 600;
+}
+
+.current-indicator {
+  color: var(--color-brand-primary);
+  font-weight: bold;
+}
+
+.dropdown-arrow {
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+  color: var(--color-sidebar-caption);
+}
+</style>

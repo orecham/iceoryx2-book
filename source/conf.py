@@ -39,3 +39,14 @@ html_title = "the iceoryx2 book"
 html_theme_options = {
 }
 html_static_path = ['_static']
+html_sidebars = {
+    '**': [
+        'sidebar/scroll-start.html',
+        'sidebar/brand.html',
+        'sidebar/search.html',
+        'sidebar/navigation.html',
+        'versions.html',  # Add this line
+        'sidebar/ethical-ads.html',
+        'sidebar/scroll-end.html',
+    ],
+}

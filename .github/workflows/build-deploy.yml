@@ -146,6 +146,22 @@ jobs:
           # Add .nojekyll file to disable Jekyll processing
           touch .nojekyll
 
+          # Generate versions.json for version picker
+          cat > versions.json << EOF
+[
+  {"name": "main", "type": "(dev)", "url": "/main/"}$(
+            # Add existing version directories
+            for dir in */; do
+              if [[ "$dir" != "main/" && "$dir" != "temp-docs/" ]]; then
+                version_name="${dir%/}"
+                echo ","
+                echo "  {\"name\": \"$version_name\", \"type\": \"\", \"url\": \"/$version_name/\"}"
+              fi
+            done
+          )
+]
+EOF
+
           # Clean up temp directory
           rm -rf ./book
           
