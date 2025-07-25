@@ -121,6 +121,10 @@ jobs:
 
       - name: Deploy to version directory
         run: |
+          # Set git config for this step
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
           if [[ "${{ github.ref_type }}" == "branch" ]]; then
             DEPLOY_DIR="${{ github.ref_name }}"
             COMMIT_MSG="Deploy ${{ github.ref_name }} book - ${{ github.sha }}"
