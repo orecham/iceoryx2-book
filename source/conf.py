@@ -14,6 +14,7 @@ extensions = [
     'sphinxcontrib.mermaid',
     'myst_parser',
     'sphinx_design',
+    "sphinx_multiversion",
 ]
 
 myst_enable_extensions = [
@@ -22,6 +23,11 @@ myst_enable_extensions = [
     "attrs_inline",
 ]
 myst_heading_anchors = 3
+
+smv_branch_whitelist = r'^main$'
+smv_tag_whitelist = r'^v\d+\.\d+\.\d+$'
+smv_remote_whitelist = r'^origin$'
+smv_released_pattern = r'^tags/v\d+\.\d+\.\d+$'
 
 templates_path = ['_templates']
 exclude_patterns = []
@@ -39,3 +45,20 @@ html_title = "the iceoryx2 book"
 html_theme_options = {
 }
 html_static_path = ['_static']
+html_sidebars = {
+    "**": [
+        "sidebar/scroll-start.html",
+        "sidebar/brand.html",
+        "sidebar/search.html",
+        'version-picker.html',
+        "sidebar/navigation.html",
+        "sidebar/ethical-ads.html",
+        "sidebar/scroll-end.html",
+    ]
+}
+html_css_files = [
+    'css/version-picker.css',
+]
+html_js_files = [
+    'js/version-picker.js',
+]
