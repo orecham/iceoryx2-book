@@ -1,5 +1,6 @@
 SPHINXOPTS    ?=
-SPHINXBUILD   ?= poetry run sphinx-build   # Changed this line
+SPHINXBUILD   ?= poetry run sphinx-build
+SPHINXMULTI   ?= poetry run sphinx-multiversion
 SPHINXAUTO    ?= poetry run sphinx-autobuild
 SOURCEDIR     = source
 BUILDDIR      = build
@@ -21,6 +22,9 @@ serve:
 	$(SPHINXAUTO) "$(SOURCEDIR)" "$(BUILDDIR)/html" \
 		--watch $(SOURCEDIR) \
 		--open-browser
+
+publication:
+	$(SPHINXMULTI) $(SPHINXOPTS) "$(SOURCEDIR)" "$(BUILDDIR)/publish" $(O)
 
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).

@@ -1,0 +1,15 @@
+{% if versions %}
+<div class="version-dropdown">
+  <button class="dropdown-button" onclick="toggleVersionDropdown()">
+    {{ current_version.name if current_version else versions[0].name }}
+    <span class="dropdown-arrow">▼</span>
+  </button>
+  <div class="dropdown-content" id="version-dropdown">
+    {%- for item in versions %}
+    <a href="{{ item.url }}" {% if item.name == current_version.name %}class="current"{% endif %}>
+      {{ item.name }}
+    </a>
+    {%- endfor %}
+  </div>
+</div>
+{% endif %}
