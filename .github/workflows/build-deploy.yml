@@ -41,6 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Fetch all history for sphinx-multiversion
+          fetch-depth: 0
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -72,88 +75,46 @@ jobs:
       - name: Install Python dependencies
         run: poetry install --no-root --with dev
 
-      - name: Build book
-        run: poetry run make clean html
+      - name: Build book versions
+        run: make publication
           
       - name: Upload book artifact
         uses: actions/upload-artifact@v4
         with:
           name: book-${{ github.sha }}
-          path: build/html
+          path: build/publish
           retention-days: 30
 
   deploy:
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') # main or version tags
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout gh-pages branch
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          fetch-depth: 0
-        continue-on-error: true
-
-      - name: Create gh-pages branch if it doesn't exist
-        if: failure()
-        run: |
-          git checkout --orphan gh-pages
-          git rm -rf .
-          echo "# iceoryx2-book" > README.md
-          git add README.md
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Initialize gh-pages branch"
-          git push origin gh-pages
-          
-      - name: Checkout gh-pages branch (retry)
-        if: failure()
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-
       - name: Download book artifact
         uses: actions/download-artifact@v4
         with:
           name: book-${{ github.sha }}
           path: ./book
-
-      - name: Deploy to version directory
+      - name: Create root redirect
         run: |
-          # Set git config for this step
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          if [[ "${{ github.ref_type }}" == "branch" ]]; then
-            DEPLOY_DIR="${{ github.ref_name }}"
-            COMMIT_MSG="deploy ${{ github.ref_name }} build of book (${{ github.sha }})"
-          else
-            # For tags, remove 'v' prefix (v0.1 -> 0.1)
-            TAG_NAME="${{ github.ref_name }}"
-            DEPLOY_DIR="${TAG_NAME#v}"
-            COMMIT_MSG="deploy version $DEPLOY_DIR build of book (${{ github.sha }})"
-          fi
-          
-          echo "deploying to $DEPLOY_DIR/ directory"
-          
-          # Remove existing version directory
-          rm -rf "$DEPLOY_DIR/"
-          
-          # Create version directory and copy files
-          mkdir -p "$DEPLOY_DIR"
-          cp -r ./book/* "$DEPLOY_DIR/"
-
-          # Add .nojekyll file to disable Jekyll processing
-          touch .nojekyll
-
-          # Clean up temp directory
-          rm -rf ./book
-          
-          # Commit and push changes
-          git add .
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "$COMMIT_MSG"
-            git push origin HEAD:gh-pages
-          fi
+          cat > ./book/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="utf-8">
+              <title>Redirecting to iceoryx2 Documentation</title>
+              <meta http-equiv="refresh" content="0; url=./main/">
+              <link rel="canonical" href="./main/">
+          </head>
+          <body>
+              <p>Redirecting to <a href="./main/">iceoryx2 documentation</a>...</p>
+          </body>
+          </html>
+          EOF
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./book
+          keep_files: true
+          enable_jekyll: false
