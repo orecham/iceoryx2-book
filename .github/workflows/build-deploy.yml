@@ -95,7 +95,22 @@ jobs:
         with:
           name: book-${{ github.sha }}
           path: ./book
-
+      - name: Create root redirect
+        run: |
+          cat > ./book/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="utf-8">
+              <title>Redirecting to iceoryx2 Documentation</title>
+              <meta http-equiv="refresh" content="0; url=./main/">
+              <link rel="canonical" href="./main/">
+          </head>
+          <body>
+              <p>Redirecting to <a href="./main/">iceoryx2 documentation</a>...</p>
+          </body>
+          </html>
+          EOF
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
